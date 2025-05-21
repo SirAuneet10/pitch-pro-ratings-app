@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,14 +9,38 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { getRatingColorClass, starToScore, PlayerPosition } from "@/utils/calculations";
 import { useAuth } from "@/contexts/AuthContext";
 
-// Mock data - in a real app, this would come from API/database
-const mockPlayers = [
+// Player type definition to share across components
+export type Player = {
+  id: string;
+  name: string;
+  position: PlayerPosition;
+  email?: string;
+  bio?: string;
+  profilePicture?: string | null;
+};
+
+// Global state to share players across components
+let globalPlayers: Player[] = [
   { id: "1", name: "John Smith", position: "ST" as PlayerPosition },
   { id: "2", name: "David Miller", position: "CM" as PlayerPosition },
   { id: "3", name: "Carlos Perez", position: "CB" as PlayerPosition },
   { id: "4", name: "Alex Chen", position: "GK" as PlayerPosition },
   { id: "5", name: "Marcus Johnson", position: "LM" as PlayerPosition },
 ];
+
+// Event to notify components when players are updated
+const playersUpdatedEvent = new CustomEvent("playersUpdated");
+
+// Helper function to update global players
+export const updateGlobalPlayers = (players: Player[]) => {
+  globalPlayers = [...players];
+  window.dispatchEvent(playersUpdatedEvent);
+};
+
+// Helper function to get global players
+export const getGlobalPlayers = (): Player[] => {
+  return [...globalPlayers];
+};
 
 type RatingAttribute = {
   name: string;
@@ -41,6 +65,7 @@ const ratingAttributes: RatingAttribute[] = [
 const PlayerRatingForm: React.FC = () => {
   const { currentUser } = useAuth();
   const [selectedPlayer, setSelectedPlayer] = useState<string>("");
+  const [players, setPlayers] = useState<Player[]>(getGlobalPlayers());
   const [ratings, setRatings] = useState(() => {
     const initialRatings: Record<string, number> = {};
     ratingAttributes.forEach(attr => {
@@ -49,6 +74,19 @@ const PlayerRatingForm: React.FC = () => {
     return initialRatings;
   });
   const [submitted, setSubmitted] = useState(false);
+
+  // Listen for player updates
+  useEffect(() => {
+    const handlePlayersUpdated = () => {
+      setPlayers(getGlobalPlayers());
+    };
+
+    window.addEventListener("playersUpdated", handlePlayersUpdated);
+    
+    return () => {
+      window.removeEventListener("playersUpdated", handlePlayersUpdated);
+    };
+  }, []);
 
   const handleRatingChange = (attribute: string, value: number[]) => {
     setRatings(prev => ({
@@ -88,7 +126,7 @@ const PlayerRatingForm: React.FC = () => {
     }, 2000);
   };
 
-  const playerOptions = mockPlayers.filter(player => 
+  const playerOptions = players.filter(player => 
     // Filter out the current user - you can't rate yourself
     !currentUser || player.name !== currentUser.email
   );

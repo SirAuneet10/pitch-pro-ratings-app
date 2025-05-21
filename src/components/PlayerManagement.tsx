@@ -1,5 +1,4 @@
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Card, 
   CardContent, 
@@ -25,50 +24,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { PlayerPosition } from "@/utils/calculations";
 import { toast } from "sonner";
-
-// Mock data - in a real app, this would come from API/database
-const mockPlayers = [
-  { 
-    id: "1", 
-    name: "John Smith", 
-    email: "john@example.com", 
-    position: "ST" as PlayerPosition,
-    bio: "Striker with excellent finishing ability",
-    profilePicture: null 
-  },
-  { 
-    id: "2", 
-    name: "David Miller", 
-    email: "david@example.com", 
-    position: "CM" as PlayerPosition,
-    bio: "Creative midfielder with great vision",
-    profilePicture: null 
-  },
-  { 
-    id: "3", 
-    name: "Carlos Perez", 
-    email: "carlos@example.com", 
-    position: "CB" as PlayerPosition,
-    bio: "Strong defender with good aerial ability",
-    profilePicture: null 
-  },
-  { 
-    id: "4", 
-    name: "Alex Chen", 
-    email: "alex@example.com", 
-    position: "GK" as PlayerPosition,
-    bio: "Reliable goalkeeper with good reflexes",
-    profilePicture: null 
-  },
-  { 
-    id: "5", 
-    name: "Marcus Johnson", 
-    email: "marcus@example.com", 
-    position: "LM" as PlayerPosition,
-    bio: "Fast winger with excellent crossing",
-    profilePicture: null 
-  },
-];
+import { Player, getGlobalPlayers, updateGlobalPlayers } from "./PlayerRatingForm";
 
 // All available positions
 const positions: PlayerPosition[] = [
@@ -76,19 +32,24 @@ const positions: PlayerPosition[] = [
 ];
 
 const PlayerManagement: React.FC = () => {
-  const [players, setPlayers] = useState(mockPlayers);
+  const [players, setPlayers] = useState<Player[]>(getGlobalPlayers());
   const [searchQuery, setSearchQuery] = useState("");
   
   // Player form state
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [currentPlayer, setCurrentPlayer] = useState<typeof mockPlayers[0] | null>(null);
+  const [currentPlayer, setCurrentPlayer] = useState<Player | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     position: "CM" as PlayerPosition,
     bio: "",
   });
+  
+  // Initialize players from global state
+  useEffect(() => {
+    setPlayers(getGlobalPlayers());
+  }, []);
   
   // Handle form input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -97,11 +58,11 @@ const PlayerManagement: React.FC = () => {
   };
   
   // Open edit dialog with player data
-  const handleEditPlayer = (player: typeof mockPlayers[0]) => {
+  const handleEditPlayer = (player: Player) => {
     setCurrentPlayer(player);
     setFormData({
       name: player.name,
-      email: player.email,
+      email: player.email || "",
       position: player.position,
       bio: player.bio || "",
     });
@@ -121,7 +82,10 @@ const PlayerManagement: React.FC = () => {
       profilePicture: null
     };
     
-    setPlayers([...players, newPlayer]);
+    const updatedPlayers = [...players, newPlayer];
+    setPlayers(updatedPlayers);
+    updateGlobalPlayers(updatedPlayers);
+    
     toast.success(`${formData.name} added successfully!`);
     setIsAddDialogOpen(false);
     
@@ -153,6 +117,8 @@ const PlayerManagement: React.FC = () => {
     );
     
     setPlayers(updatedPlayers);
+    updateGlobalPlayers(updatedPlayers);
+    
     toast.success(`${formData.name} updated successfully!`);
     setIsEditDialogOpen(false);
   };
@@ -162,6 +128,8 @@ const PlayerManagement: React.FC = () => {
     if (confirm("Are you sure you want to delete this player?")) {
       const updatedPlayers = players.filter(player => player.id !== playerId);
       setPlayers(updatedPlayers);
+      updateGlobalPlayers(updatedPlayers);
+      
       toast.success("Player removed successfully!");
     }
   };
@@ -169,7 +137,7 @@ const PlayerManagement: React.FC = () => {
   // Filter players based on search query
   const filteredPlayers = players.filter(player => 
     player.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    player.email.toLowerCase().includes(searchQuery.toLowerCase())
+    (player.email && player.email.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   return (
